@@ -1,4 +1,4 @@
-# YouTube Summarizes
+# Generate YouTube Summaries with GPT
 
 This is a Python Streamlit app that asks for a URL to a YouTube video. Both standard and watch URLs are supported (e.g., https://www.youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID).
 
