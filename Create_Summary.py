@@ -13,6 +13,7 @@ from langchain.prompts.chat import (
 )
 from pytube.exceptions import RegexMatchError
 import sys, pathlib
+import re
 
 # add helpers folder to path (required for Streamlit to find the helpers module)
 sys.path.append(str(pathlib.Path().absolute()) + "/helpers")
@@ -21,6 +22,16 @@ from helpers import TableManager
 
 # get OpenAI key env
 dotenv.load_dotenv()
+
+# helper function to extract video ID from YouTube URL
+def get_video_id(url):
+    # Extract the video ID from a YouTube URL
+    regex = r"(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^\"&?\/ ]{11})"
+    match = re.search(regex, url)
+    if match:
+        return match.group(1)
+    else:
+        return None
 
 # encoding for gpt-4
 encoding = tiktoken.get_encoding("cl100k_base")
@@ -73,7 +84,7 @@ def main():
         video = pytube.YouTube(youtube_url)
         video_url = video.thumbnail_url
         video_name = video.title
-        video_id = youtube_url.split('=')[-1]
+        video_id = get_video_id(youtube_url)
         video_author = video.author
         video_length = video.length
     except RegexMatchError:
