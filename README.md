@@ -45,3 +45,23 @@ Steps:
 - Run `streamlit run Create_Summary.py` to open the app in the browser
 
 Paste in a YouTube URL to verify. Use the `List Summaries` page (link in the sidebar) to see that summaries are saved to the table.
+
+## Using Docker
+
+If you have Docker installed, run the following command to create an image for the app:
+
+ `docker build -t <DOCKERID>/image:tag` .
+
+E.g., `docker build -t gbaeke/ytsum:v1`
+
+You can then push the image to Docker Hub with `docker push <DOCKERID>/image:tag` and use the app in Azure Container Apps, ACI etc...
+
+To run the app, use the following command:
+
+```
+docker run -p 8501:8501 -e API_KEY=YOURKEY -e ENDPOINT=YOURENDPOINT \
+    -e DEPLOYMENT=gpt-4-32k -e STORAGE_ACCOUNT=YOURACCOUNT \
+    -e STORAGE_KEY=YOURKEY -e STORAGE_TABLE=YOURTABLE gbaeke/yt
+```
+
+Now open `http://localhost:8501` to view the app.
