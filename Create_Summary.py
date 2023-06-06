@@ -124,12 +124,15 @@ def main():
         input_tokens = num_tokens_from_string(transcript, 'cl100k_base')
 
         # depending on the number of tokens, switch deployment
-        if input_tokens < 4096:
+        if input_tokens <= 4096:
             model = "gpt-35-turbo"  # this model needs to be deployed for your endpoint
-        elif input_tokens > 4096 and input_tokens < 8192:
+        elif input_tokens > 4096 and input_tokens <= 8192:
             model = "gpt-4"
+        elif input_tokens > 8192 and input_tokens <= 32768 :
+            model = "gpt-4-32k" # use the model from the environment and default to gpt-4
         else:
-            model = os.getenv("DEPLOYMENT", "gpt-4") # use the model from the environment and default to gpt-4
+            st.error("Transcript is too long to summarize")
+            st.stop()
 
         if always_use_32k:
             model = "gpt-4-32k"
