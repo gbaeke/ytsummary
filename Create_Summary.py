@@ -123,16 +123,17 @@ def main():
     with st.sidebar:
         # calculate tokens in input
         input_tokens = num_tokens_from_string(transcript, 'cl100k_base')
+        max_tokens = 1024
 
         # depending on the number of tokens, switch deployment
-        if input_tokens <= 4096:
+        if input_tokens <= (4096 - max_tokens):
             model = "gpt-35-turbo"  # this model needs to be deployed for your endpoint
-        elif input_tokens > 4096 and input_tokens <= 8192:
+        elif input_tokens > (4096 - max_tokens) and input_tokens <= (8192 - max_tokens):
             model = "gpt-4"
-        elif input_tokens > 8192 and input_tokens <= 32768 :
+        elif input_tokens > (8192 - max_tokens) and input_tokens <= (32768 - max_tokens):
             model = "gpt-4-32k" # use the model from the environment and default to gpt-4
         else:
-            st.error("Transcript is too long to summarize")
+            st.error(f"Transcript is too long to summarize. Tokens: {input_tokens}")
             st.stop()
 
         if always_use_32k:
@@ -159,7 +160,7 @@ def main():
         openai_api_version="2023-03-15-preview",
         deployment_name=model,
         openai_api_type="azure",
-        max_tokens=1024,
+        max_tokens=max_tokens,
         temperature=0,
         verbose=True
     )
