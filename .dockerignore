@@ -4,3 +4,4 @@
 app.py
 Dockerfile
 *.ipynb
+*.txt

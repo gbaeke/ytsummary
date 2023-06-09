@@ -1,0 +1,4 @@
+az group create -n rg-storage -l westeurope
+az storage account create --name stgeba773773 --resource-group rg-storage --sku Standard_LRS --kind StorageV2
+key=$(az storage account keys list --account-name stgeba773773 --resource-group rg-storage --query "[0].value" --output tsv)
+az storage table create --account-name stgeba773773 --account-key $key --name summaries

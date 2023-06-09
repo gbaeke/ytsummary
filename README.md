@@ -8,6 +8,10 @@ Every summary is saved to an Azure Storage Table for reference. If you ask for a
 
 ➡️ A full description of the app can be found here: https://gpt-inity.addpotion.com/youtube-summarizer
 
+A look at the UI:
+
+https://www.youtube.com/watch?v=sSjalVRxuh8
+
 ## Requirements
 
 This app uses Azure OpenAI service and requires that you do three deployments in your selected region (I am using France Central):
