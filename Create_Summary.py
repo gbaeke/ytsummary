@@ -94,6 +94,7 @@ def main():
 
     with st.sidebar:
         st.write("📈 Video details")
+        st.write(f"{video_name}")
         st.image(video_url, use_column_width=True)
         summary = tm.retrieve_summary_from_table(video_id)
         if summary:
@@ -111,7 +112,7 @@ def main():
 
     # no summary, or summary and overwrite
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en','en-US', 'en-GB','en-US','de','fr', 'zh'])
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en','nl','en-US', 'en-GB','en-US','de','fr', 'zh'])
     except Exception as e:
         st.error(f"Error loading transcript: {e}")
         st.stop()

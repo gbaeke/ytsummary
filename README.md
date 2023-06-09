@@ -6,6 +6,8 @@ The app will retrieve the YouTube transcript for the video and summarize it with
 
 Every summary is saved to an Azure Storage Table for reference. If you ask for a summary a second time, you get the summary from table storage unless you override that from the options.
 
+➡️ A full description of the app can be found here: https://gpt-inity.addpotion.com/youtube-summarizer
+
 ## Requirements
 
 This app uses Azure OpenAI service and requires that you do three deployments in your selected region (I am using France Central):
