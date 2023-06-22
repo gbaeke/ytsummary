@@ -4,4 +4,4 @@
 app.py
 Dockerfile
 *.ipynb
-*.txt
+create_storage_account.txt

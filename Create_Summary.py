@@ -4,13 +4,6 @@ import os
 import pytube
 import tiktoken
 from youtube_transcript_api import YouTubeTranscriptApi
-from langchain.chat_models import AzureChatOpenAI
-from langchain import LLMChain
-from langchain.prompts.chat import (
-    ChatPromptTemplate,
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
-)
 from pytube.exceptions import RegexMatchError
 import sys, pathlib
 import re
@@ -18,46 +11,16 @@ import re
 # add helpers folder to path (required for Streamlit to find the helpers module)
 sys.path.append(str(pathlib.Path().absolute()) + "/helpers")
 
-from helpers import TableManager
+import helpers
 
 # get OpenAI key env
 dotenv.load_dotenv()
 
-# helper function to extract video ID from YouTube URL
-def get_video_id(url):
-    # Extract the video ID from a YouTube URL
-    regex = r"(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^\"&?\/ ]{11})"
-    match = re.search(regex, url)
-    if match:
-        return match.group(1)
-    else:
-        return None
-
-# encoding for gpt-4
-encoding = tiktoken.get_encoding("cl100k_base")
-
-def num_tokens_from_string(string: str, encoding_name: str) -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding(encoding_name)
-    num_tokens = len(encoding.encode(string))
-    return num_tokens
-
-# cost per 1000 tokens in France Central in euros
-model_costs = {
-    'gpt-4': {'input': 0.029, 'output': 0.057},
-    'gpt-4-32k': {'input': 0.057, 'output': 0.113},
-    'gpt-35-turbo': {'input': 0.001869, 'output': 0.001869}
-}
-
-
-def token_cost(numtokens, priceper1000):
-    return numtokens * priceper1000 / 1000
-
 def main():
     # page config
-    st.set_page_config(page_title="Summarize YouTube Transcript", page_icon="./favicon.png")
+    st.set_page_config(page_title="Summarize YouTube Video", page_icon="./favicon.png")
 
-    st.title("📼 Summarize YouTube Transcript")
+    st.title("📼 Summarize YouTube Video")
 
     # Azure Storage connection information
     account_name = os.getenv("STORAGE_ACCOUNT", "")
@@ -68,12 +31,22 @@ def main():
         st.write("One or more of the required variables to write summaries to a storage table is empty.")
         st.stop()
 
+    # OpenAI info
+    endpoint = os.getenv("ENDPOINT", "")
+    apikey = os.getenv("API_KEY", "")
+    deployment = os.getenv("DEPLOYMENT", "")
+
+    if not endpoint or not apikey or not deployment:
+        st.write("One or more of the required variables to connect to OpenAI is empty.")
+        st.stop()
+    
+
     #  create instance of TableManager class
-    tm = TableManager(account_name=account_name, account_key=account_key, table_name=table_name)
+    tm = helpers.TableManager(account_name=account_name, account_key=account_key, table_name=table_name)
 
     youtube_url = st.text_input("Enter YouTube URL:")
     with st.expander("Options", expanded=False):
-        always_use_32k = st.checkbox("Use gpt-4-32k")
+        use_default = st.checkbox("Use default")
         overwrite_existing = st.checkbox("Overwrite existing transcript")
     
     if not st.button("Summarize"):
@@ -84,7 +57,7 @@ def main():
         video = pytube.YouTube(youtube_url)
         video_url = video.thumbnail_url
         video_name = video.title
-        video_id = get_video_id(youtube_url)
+        video_id = helpers.get_video_id(youtube_url)
         video_author = video.author
         video_length = video.length
     except RegexMatchError:
@@ -108,8 +81,6 @@ def main():
         st.write(summary)
         st.stop()
 
-
-
     # no summary, or summary and overwrite
     try:
         transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en','nl','en-US', 'en-GB','en-US','de','fr', 'zh'])
@@ -122,77 +93,51 @@ def main():
     # check the transcript
     with st.sidebar:
         # calculate tokens in input
-        input_tokens = num_tokens_from_string(transcript, 'cl100k_base')
+        input_tokens = helpers.num_tokens_from_string(transcript, 'cl100k_base')
         max_tokens = 1024
 
-        # depending on the number of tokens, switch deployment
-        if input_tokens <= (4096 - max_tokens):
-            model = "gpt-35-turbo"  # this model needs to be deployed for your endpoint
-        elif input_tokens > (4096 - max_tokens) and input_tokens <= (8192 - max_tokens):
-            model = "gpt-4"
-        elif input_tokens > (8192 - max_tokens) and input_tokens <= (32768 - max_tokens):
-            model = "gpt-4-32k" # use the model from the environment and default to gpt-4
-        else:
-            st.error(f"Transcript is too long to summarize. Tokens: {input_tokens}")
-            st.stop()
+        # get the model, could be null if input is too long
+        model = helpers.get_model(input_tokens, max_tokens, use_default, deployment)
 
-        if always_use_32k:
-            model = "gpt-4-32k"
+        if model is None:
+            st.error("Input too long, please try a shorter video")
+            st.stop()
 
         # inform the user about the model
         st.write(f"Using model: {model}")
 
         # set the input and output costs from the costs in the model_costs dict
-        input_cost = model_costs[model]['input']
-        output_cost = model_costs[model]['output']
+        input_cost = helpers.model_costs[model]['input']
+        output_cost = helpers.model_costs[model]['output']
 
         # add transcript info to the sidebar
         with st.expander("YouTube transcript", expanded=False):
             st.write(f"Number of tokens in transcript: {input_tokens}")
-            st.write(f"Cost of transcript tokens: €{token_cost(input_tokens, input_cost):.3f}")
+            st.write(f"Cost of transcript tokens: €{helpers.token_cost(input_tokens, input_cost):.3f}")
             st.write(transcript)
 
-    # use Azure chat model; requires gtp-4 deployment on given endpoint
-    model = AzureChatOpenAI(
-        client=None,
-        openai_api_base=os.getenv("ENDPOINT", ""),
-        openai_api_key=os.getenv("API_KEY", ""),
-        openai_api_version="2023-03-15-preview",
-        deployment_name=model,
-        openai_api_type="azure",
-        max_tokens=max_tokens,
-        temperature=0,
-        verbose=True
-    )
-
-    system_template = "You are a helpful assistant that summarizes Youtube transcripts"
-    system_prompt = SystemMessagePromptTemplate.from_template(system_template)
-
-    human_template = "Summarize the transcript of this video. Always use English even if the transcript is in another language. If there are different sections, provide more details about each section: {transcript}"
-    human_prompt = HumanMessagePromptTemplate.from_template(human_template)
-
-    chat_prompt = ChatPromptTemplate.from_messages([system_prompt, human_prompt])
+    
 
     with st.spinner("Getting summary..."):
         try:
-            chain = LLMChain(llm=model, prompt=chat_prompt)
-            result = chain.run(transcript=transcript)
+            summary = helpers.get_summary(transcript, max_tokens, model, endpoint,
+                                          apikey, "azure", False )
         except Exception as e:
             st.error(f"Error creating summary: {e}")
             st.stop()
 
     # cost of the result
-    output_tokens = num_tokens_from_string(result, 'cl100k_base')
+    output_tokens = helpers.num_tokens_from_string(summary, 'cl100k_base')
 
     with st.expander("Tokens and cost", expanded=True):
         st.write(f"Number of transcript tokens: {input_tokens}")
         st.write(f"Number of summary tokens: {output_tokens}")
-        st.write(f"Cost of transcript tokens: €{token_cost(input_tokens, input_cost):.3f}")
-        st.write(f"Cost of the summary: €{token_cost(output_tokens, output_cost):.3f}")
-        st.write(f"Total cost of transcript and summary: €{token_cost(input_tokens, input_cost) + token_cost(output_tokens, output_cost):.3f}")
+        st.write(f"Cost of transcript tokens: €{helpers.token_cost(input_tokens, input_cost):.3f}")
+        st.write(f"Cost of the summary: €{helpers.token_cost(output_tokens, output_cost):.3f}")
+        st.write(f"Total cost of transcript and summary: €{helpers.token_cost(input_tokens, input_cost) + helpers.token_cost(output_tokens, output_cost):.3f}")
 
     st.header("📕 Your Summary")
-    st.write(result)
+    st.write(summary)
 
     st.header("👀 Watch the Video")
     st.video(youtube_url)
@@ -200,7 +145,7 @@ def main():
     with st.sidebar:
         # save to Azure table
         try:
-            tm.write_entry_to_table(video_id, video_name, result, video_author, video_length)
+            tm.write_entry_to_table(video_id, video_name, summary, video_author, video_length)
             st.success("Summary saved to Azure table")
         except Exception as e:
             st.error(f"Error saving summary: {e}")
