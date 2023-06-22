@@ -110,14 +110,11 @@ def main():
             max_tokens = 1024
 
             # get the model, could be null if input is too long
-            model = helpers.get_model(input_tokens, max_tokens)
+            model = helpers.get_model(input_tokens, max_tokens, use_default, deployment)
 
             if model is None:
                 st.error("Input too long, please try a shorter video")
                 continue  # proceed with next video
-
-            if use_default:
-                model = deployment  # comes from env var DEPLOYMENT
 
             # inform the user about the model
             st.write(f"Using model: {model}")
@@ -167,14 +164,32 @@ def main():
             except Exception as e:
                 st.error(f"Error saving summary: {e}")
 
-    if download_md:
-        # create a md file with all the summaries
-        summary = ""
-        for video_name, text in summaries:
-            summary += f"## {video_name}\n\n{text}\n\n"
+    st.header("📑 Overall Summary")
+
+    # create overall summary
+    all_summaries = ""
+    for video_name, text in summaries:
+            all_summaries += f"### {video_name}\n\n{text}\n\n"
+
+    # create a summary of summaries
+    try:
+        # use a larger model for the overall summary
+        model = "gpt-4-32k"
         
+        with st.spinner(f"Getting overall summary..."):
+            overall_summary = helpers.get_summary(all_summaries, 4096, model, endpoint,
+                                    apikey, "azure", False )
+        st.write(overall_summary)
+    except Exception as e:
+        st.error(f"Error creating overall summary: {e}")
+    
+
+    if download_md:
+        # add the overall_summary to the summaries
+        end_summary = f"## All Summaries\n\n{all_summaries}\n\n## Overall Summary\n\n{overall_summary}\n\n"
+
         # download the markdown file
-        b64 = base64.b64encode(summary.encode()).decode()
+        b64 = base64.b64encode(end_summary.encode()).decode()
         href = f'<a href="data:text/plain;base64,{b64}" download="summaries.md">Download summaries.md</a>'
         st.markdown(href, unsafe_allow_html=True)
 

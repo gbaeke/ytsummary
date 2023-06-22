@@ -31,7 +31,7 @@ def main():
         st.write("One or more of the required variables to write summaries to a storage table is empty.")
         st.stop()
 
-    # OpenAI infiorma
+    # OpenAI info
     endpoint = os.getenv("ENDPOINT", "")
     apikey = os.getenv("API_KEY", "")
     deployment = os.getenv("DEPLOYMENT", "")
@@ -97,14 +97,11 @@ def main():
         max_tokens = 1024
 
         # get the model, could be null if input is too long
-        model = helpers.get_model(input_tokens, max_tokens)
+        model = helpers.get_model(input_tokens, max_tokens, use_default, deployment)
 
         if model is None:
             st.error("Input too long, please try a shorter video")
             st.stop()
-
-        if use_default:
-            model = deployment  # comes from env var DEPLOYMENT
 
         # inform the user about the model
         st.write(f"Using model: {model}")

@@ -1,2 +1,3 @@
 .env
 *.sh
+./helpers/__pycache__

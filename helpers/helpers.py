@@ -218,7 +218,10 @@ def get_summary(transcript, max_tokens=1024, model="gpt-4-32k", endpoint=None, a
 
     return result
 
-def get_model(input_tokens, max_tokens):
+def get_model(input_tokens, max_tokens, use_default=False, deployment="gpt-4-32k"):
+    if use_default:
+        return deployment
+
     # depending on the number of tokens, switch deployment
     if input_tokens <= (4096 - max_tokens):
         model = "gpt-35-turbo"  # this model needs to be deployed for your endpoint
